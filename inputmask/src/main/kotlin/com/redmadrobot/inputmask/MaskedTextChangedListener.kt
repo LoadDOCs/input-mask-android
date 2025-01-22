@@ -47,6 +47,7 @@ open class MaskedTextChangedListener(
 
     private var afterText: String = ""
     private var caretPosition: Int = 0
+    private var textWatcherCallbacksEnabled: Boolean = true
 
     private val field: WeakReference<EditText> = WeakReference(field)
 
@@ -209,7 +210,11 @@ open class MaskedTextChangedListener(
     fun totalValueLength(): Int = this.primaryMask.totalValueLength()
 
     override fun afterTextChanged(edit: Editable?) {
-        this.field.get()?.removeTextChangedListener(this)
+        if (!textWatcherCallbacksEnabled) {
+            return
+        }
+
+        textWatcherCallbacksEnabled = false
         edit?.replace(0, edit.length, this.afterText)
 
         try {
@@ -228,15 +233,23 @@ open class MaskedTextChangedListener(
             )
         }
 
-        this.field.get()?.addTextChangedListener(this)
+        textWatcherCallbacksEnabled = true
         this.listener?.afterTextChanged(edit)
     }
 
     override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {
+        if (!textWatcherCallbacksEnabled) {
+            return
+        }
+
         this.listener?.beforeTextChanged(s, start, count, after)
     }
 
     override fun onTextChanged(text: CharSequence, cursorPosition: Int, before: Int, count: Int) {
+        if (!textWatcherCallbacksEnabled) {
+            return
+        }
+
         val isDeletion: Boolean = before > 0 && count == 0
         val useAutocomplete = if (isDeletion) false else this.autocomplete
         val useAutoskip = if (isDeletion) this.autoskip else false
